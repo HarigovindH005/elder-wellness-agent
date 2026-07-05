@@ -17,6 +17,7 @@ from fastapi.responses import JSONResponse
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, update
 from dotenv import load_dotenv
+from fastapi.responses import FileResponse
 
 from api.database import get_db, init_db
 from api.models import (
@@ -240,14 +241,8 @@ async def get_low_stock_medications(elder_id: int, db: AsyncSession = Depends(ge
         if m.pills_remaining <= m.refill_threshold
     ]
     return {"low_stock_medications": low_stock, "count": len(low_stock)}
-@app.get("/")
-async def root():
-    return {
-        "status": "ok",
-        "service": "MediGuard",
-        "docs": "/docs"
-    }
-from fastapi.responses import FileResponse
+
+
 
 @app.get("/")
 async def home():

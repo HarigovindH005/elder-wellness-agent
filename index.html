@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MediGuard — Elder Medication Dashboard</title>
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Inter',sans-serif;background:#0a1628;color:#e8f4f0;min-height:100vh}
+:root{
+  --teal:#00c9a7;--teal-dim:#007a66;--teal-glow:#00c9a715;
+  --navy:#0a1628;--card:#0f2035;--card2:#162840;--border:#1e3a52;
+  --text:#e8f4f0;--muted:#7ba8c4;--warn:#f59e0b;--danger:#ef4444;--ok:#10b981
+}
+.shell{display:flex;height:100vh;overflow:hidden}
+.sidebar{width:220px;background:#080f1e;border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0}
+.main{flex:1;overflow-y:auto;display:flex;flex-direction:column}
+.logo{padding:20px 16px 16px;border-bottom:1px solid var(--border)}
+.logo h1{font-family:'Space Grotesk',sans-serif;font-size:17px;font-weight:700;color:var(--teal);display:flex;align-items:center;gap:8px}
+.logo p{font-size:11px;color:var(--muted);margin-top:4px;padding-left:28px}
+.nav{padding:12px 8px;flex:1}
+.nav-item{display:flex;align-items:center;gap:10px;padding:9px 10px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:500;color:var(--muted);margin-bottom:2px;transition:all 0.15s;border:none;background:none;width:100%;text-align:left}
+.nav-item:hover{background:var(--card);color:var(--text)}
+.nav-item.active{background:var(--teal-glow);color:var(--teal);border:1px solid #00c9a720}
+.nav-item .icon{font-size:15px;width:20px;text-align:center}
+.elder-select{padding:12px 8px;border-top:1px solid var(--border)}
+.elder-select label{font-size:11px;color:var(--muted);display:block;margin-bottom:6px;padding:0 4px}
+.elder-select select{width:100%;background:var(--card);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 10px;font-size:12px;font-family:'Inter',sans-serif;cursor:pointer}
+.api-status{padding:8px 12px;font-size:11px;display:flex;align-items:center;gap:6px;border-top:1px solid var(--border)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--muted);flex-shrink:0}
+.dot.ok{background:var(--ok);animation:pulse 2s infinite}
+.dot.err{background:var(--danger)}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+.topbar{padding:16px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:#0a1628;position:sticky;top:0;z-index:10}
+.topbar h2{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600}
+.topbar-actions{display:flex;gap:8px}
+.panel{display:none;flex:1}
+.panel.active{display:block}
+.panel-body{padding:20px 24px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:16px;margin-bottom:12px}
+.card-title{font-family:'Space Grotesk',sans-serif;font-size:12px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.6px;margin-bottom:14px}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:16px}
+.stat{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px 16px}
+.stat-val{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;line-height:1}
+.stat-label{font-size:11px;color:var(--muted);margin-top:5px}
+.med-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px;transition:border-color 0.2s}
+.med-card.low{border-color:var(--warn)}
+.med-card.critical{border-color:var(--danger)}
+.med-row{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.med-name{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:600}
+.med-sub{font-size:12px;color:var(--muted);margin-top:3px}
+.badge{font-size:11px;font-weight:600;padding:3px 9px;border-radius:6px;white-space:nowrap;flex-shrink:0}
+.badge-ok{background:#0a2a1a;color:var(--ok);border:1px solid #10b98130}
+.badge-low{background:#2a1a00;color:var(--warn);border:1px solid #f59e0b30}
+.badge-critical{background:#2a0808;color:var(--danger);border:1px solid #ef444430}
+.pill-bar{height:5px;background:#1e3a52;border-radius:3px;margin:10px 0 12px;overflow:hidden}
+.pill-fill{height:100%;border-radius:3px;transition:width 0.6s}
+.fill-ok{background:var(--ok)}.fill-low{background:var(--warn)}.fill-critical{background:var(--danger)}
+.pill-meta{display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:5px}
+.med-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{padding:6px 14px;border-radius:7px;font-size:12px;font-weight:500;border:1px solid;cursor:pointer;font-family:'Inter',sans-serif;transition:all 0.15s;display:inline-flex;align-items:center;gap:5px}
+.btn:active{transform:scale(0.97)}
+.btn:disabled{opacity:0.4;cursor:not-allowed}
+.btn-primary{background:var(--teal);color:#0a1628;border-color:var(--teal)}
+.btn-primary:hover:not(:disabled){background:#00b090}
+.btn-outline{background:transparent;color:var(--teal);border-color:var(--teal-dim)}
+.btn-outline:hover:not(:disabled){background:var(--teal-glow)}
+.btn-warn{background:transparent;color:var(--warn);border-color:#553d00}
+.btn-sm{padding:5px 11px;font-size:12px}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-group{display:flex;flex-direction:column;gap:5px}
+.form-group.full{grid-column:1/-1}
+.form-group label{font-size:12px;color:var(--muted);font-weight:500}
+.form-group input,.form-group select,.form-group textarea{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 11px;font-size:13px;font-family:'Inter',sans-serif;outline:none;transition:border-color 0.2s}
+.form-group input:focus,.form-group select:focus{border-color:var(--teal-dim)}
+.form-group textarea{resize:vertical;min-height:70px}
+.table{width:100%;border-collapse:collapse;font-size:13px}
+.table th{font-size:11px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:0.5px;padding:8px 12px;text-align:left;border-bottom:1px solid var(--border)}
+.table td{padding:10px 12px;border-bottom:1px solid #1e3a5240}
+.table tr:last-child td{border-bottom:none}
+.status-pill{font-size:11px;font-weight:600;padding:2px 8px;border-radius:5px}
+.s-taken{background:#0a2a1a;color:var(--ok)}
+.s-missed{background:#2a0808;color:var(--danger)}
+.s-pending{background:#2a1a00;color:var(--warn)}
+.sched-row{display:flex;align-items:center;gap:14px;padding:11px 0;border-bottom:1px solid var(--border)}
+.sched-row:last-child{border-bottom:none}
+.time-chip{background:var(--card2);border:1px solid var(--border);border-radius:7px;padding:4px 11px;font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:600;color:var(--teal);min-width:65px;text-align:center}
+.sched-info{flex:1}
+.sched-name{font-size:13px;font-weight:500}
+.sched-dose{font-size:12px;color:var(--muted);margin-top:2px}
+.modal-overlay{display:none;position:fixed;inset:0;background:#00000088;z-index:100;align-items:center;justify-content:center}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:480px;max-height:90vh;overflow-y:auto}
+.modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.modal-header h3{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:600}
+.modal-close{background:none;border:none;color:var(--muted);cursor:pointer;font-size:18px;padding:2px 6px;border-radius:4px}
+.modal-close:hover{color:var(--text);background:var(--card2)}
+.modal-footer{display:flex;justify-content:flex-end;gap:8px;margin-top:18px;padding-top:14px;border-top:1px solid var(--border)}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--card2);border:1px solid var(--border);border-radius:10px;padding:11px 16px;font-size:13px;font-weight:500;opacity:0;transform:translateY(8px);transition:all 0.25s;z-index:200;pointer-events:none;max-width:340px}
+.toast.show{opacity:1;transform:translateY(0)}
+.toast.success{border-color:var(--ok);color:var(--ok)}
+.toast.error{border-color:var(--danger);color:var(--danger)}
+.toast.warn{border-color:var(--warn);color:var(--warn)}
+.empty{text-align:center;padding:40px 20px;color:var(--muted)}
+.empty .icon{font-size:32px;margin-bottom:10px}
+.empty p{font-size:13px;line-height:1.6}
+.spin{display:inline-block;width:13px;height:13px;border:2px solid #ffffff40;border-top-color:#fff;border-radius:50%;animation:spin 0.6s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.alert-banner{background:#2a0808;border:1px solid #ef444430;border-left:3px solid var(--danger);border-radius:0 10px 10px 0;padding:12px 16px;margin-bottom:10px;display:flex;align-items:flex-start;gap:10px}
+.alert-banner .icon{font-size:15px;flex-shrink:0;margin-top:1px}
+.alert-title{font-weight:600;color:var(--danger);font-size:13px;margin-bottom:2px}
+.alert-desc{color:var(--muted);font-size:12px;line-height:1.4}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="logo">
+      <h1>💊 MediGuard</h1>
+      <p>Agents for Good</p>
+    </div>
+    <nav class="nav">
+      <button class="nav-item active" data-panel="dashboard" onclick="goto(this,'dashboard')"><span class="icon">🏠</span>Dashboard</button>
+      <button class="nav-item" data-panel="medications" onclick="goto(this,'medications')"><span class="icon">💊</span>Medications</button>
+      <button class="nav-item" data-panel="schedule" onclick="goto(this,'schedule')"><span class="icon">🕐</span>Schedule</button>
+      <button class="nav-item" data-panel="adherence" onclick="goto(this,'adherence')"><span class="icon">📊</span>Adherence</button>
+      <button class="nav-item" data-panel="setup" onclick="goto(this,'setup')"><span class="icon">⚙️</span>Setup</button>
+    </nav>
+    <div class="elder-select">
+      <label>Active Elder</label>
+      <select id="elder-select" onchange="switchElder(this.value)">
+        <option value="1">Elder #1</option>
+      </select>
+    </div>
+    <div class="api-status">
+      <div class="dot" id="api-dot"></div>
+      <span id="api-status-text" style="color:var(--muted)">Connecting...</span>
+    </div>
+  </aside>
+
+  <!-- Main content -->
+  <div class="main">
+
+    <!-- DASHBOARD -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="topbar">
+        <h2>Dashboard</h2>
+        <button class="btn btn-outline btn-sm" onclick="loadDashboard()">↻ Refresh</button>
+      </div>
+      <div class="panel-body">
+        <div class="stats">
+          <div class="stat"><div class="stat-val" id="s-meds">—</div><div class="stat-label">Medications</div></div>
+          <div class="stat"><div class="stat-val" style="color:var(--danger)" id="s-low">—</div><div class="stat-label">Need Refill</div></div>
+          <div class="stat"><div class="stat-val" style="color:var(--ok)" id="s-adh">—</div><div class="stat-label">7-day Adherence</div></div>
+          <div class="stat"><div class="stat-val" id="s-doses">—</div><div class="stat-label">Doses Today</div></div>
+        </div>
+        <div id="low-alerts"></div>
+        <div class="card">
+          <div class="card-title">Today's Medications</div>
+          <div id="dash-meds"><div class="empty"><div class="icon">⏳</div><p>Loading...</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- MEDICATIONS -->
+    <div class="panel" id="panel-medications">
+      <div class="topbar">
+        <h2>Medications</h2>
+        <button class="btn btn-primary btn-sm" onclick="openAddMed()">+ Add Medication</button>
+      </div>
+      <div class="panel-body">
+        <div id="med-list"><div class="empty"><div class="icon">⏳</div><p>Loading...</p></div></div>
+      </div>
+    </div>
+
+    <!-- SCHEDULE -->
+    <div class="panel" id="panel-schedule">
+      <div class="topbar"><h2>Today's Schedule</h2></div>
+      <div class="panel-body">
+        <div class="card">
+          <div id="sched-list"><div class="empty"><div class="icon">⏳</div><p>Loading...</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ADHERENCE -->
+    <div class="panel" id="panel-adherence">
+      <div class="topbar"><h2>Adherence Log</h2></div>
+      <div class="panel-body">
+        <div class="card">
+          <div class="card-title">Recent Events</div>
+          <div id="adh-table"><div class="empty"><div class="icon">⏳</div><p>Loading...</p></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- SETUP -->
+    <div class="panel" id="panel-setup">
+      <div class="topbar"><h2>Setup</h2></div>
+      <div class="panel-body">
+        <div class="card" style="max-width:500px">
+          <div class="card-title">Create Elder Profile</div>
+          <div class="form-grid">
+            <div class="form-group full"><label>Full Name *</label><input id="sn" placeholder="e.g. Ramesh Kumar"></div>
+            <div class="form-group"><label>Phone</label><input id="sp" placeholder="+919876543210"></div>
+            <div class="form-group"><label>Email</label><input id="se" placeholder="ramesh@email.com"></div>
+            <div class="form-group full"><label>Timezone</label>
+              <select id="stz">
+                <option value="Asia/Kolkata">Asia/Kolkata (IST)</option>
+                <option value="Asia/Dubai">Asia/Dubai</option>
+                <option value="America/New_York">America/New_York</option>
+                <option value="Europe/London">Europe/London</option>
+              </select>
+            </div>
+          </div>
+          <div style="margin-top:16px"><button class="btn btn-primary" onclick="createElder()">Create Profile</button></div>
+        </div>
+        <div class="card" style="max-width:500px">
+          <div class="card-title">API Health Check</div>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Verify your FastAPI backend is running on port 8000.</p>
+          <button class="btn btn-outline btn-sm" onclick="doHealthCheck()">Run Check</button>
+          <pre id="health-out" style="display:none;margin-top:12px;font-size:12px;color:var(--muted);white-space:pre-wrap;background:var(--card2);padding:10px;border-radius:8px"></pre>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Add Medication Modal -->
+<div class="modal-overlay" id="modal-addmed">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>Add Medication</h3>
+      <button class="modal-close" onclick="closeModal('modal-addmed')">✕</button>
+    </div>
+    <div class="form-grid">
+      <div class="form-group full"><label>Medication Name *</label><input id="mn" placeholder="e.g. Metformin 500mg"></div>
+      <div class="form-group"><label>Dosage *</label><input id="md" placeholder="e.g. 1 tablet"></div>
+      <div class="form-group"><label>Pills in Hand</label><input id="mp" type="number" value="30" min="0"></div>
+      <div class="form-group"><label>Refill Alert At</label><input id="mt" type="number" value="7" min="1"></div>
+      <div class="form-group full"><label>Notes</label><textarea id="mo" placeholder="e.g. Take with food"></textarea></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-addmed')">Cancel</button>
+      <button class="btn btn-primary" id="btn-addmed" onclick="saveMed()">Save</button>
+    </div>
+  </div>
+</div>
+
+<!-- Refill Modal -->
+<div class="modal-overlay" id="modal-refill">
+  <div class="modal" style="max-width:340px">
+    <div class="modal-header">
+      <h3>Record Refill</h3>
+      <button class="modal-close" onclick="closeModal('modal-refill')">✕</button>
+    </div>
+    <div class="form-group">
+      <label>Pills added</label>
+      <input id="rq" type="number" value="30" min="1" max="1000">
+    </div>
+    <p id="rname" style="font-size:12px;color:var(--muted);margin-top:8px"></p>
+    <div class="modal-footer">
+      <button class="btn btn-outline" onclick="closeModal('modal-refill')">Cancel</button>
+      <button class="btn btn-primary" id="btn-refill" onclick="saveRefill()">Confirm</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const API = 'http://localhost:8000';
+let elderId = 1;
+let refillId = null;
+
+// ── API ───────────────────────────────────────────────────────────────────
+async function req(method, path, body) {
+  const r = await fetch(API + path, {
+    method,
+    headers: {'Content-Type':'application/json'},
+    body: body ? JSON.stringify(body) : undefined
+  });
+  const d = await r.json();
+  if (!r.ok) throw new Error(d.detail || JSON.stringify(d));
+  return d;
+}
+
+// ── Nav ───────────────────────────────────────────────────────────────────
+function goto(btn, name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  btn.classList.add('active');
+  ({dashboard:loadDashboard, medications:loadMeds, schedule:loadSched, adherence:loadAdh, setup:()=>{}})[name]();
+}
+
+function switchElder(v) { elderId = parseInt(v); loadDashboard(); }
+
+// ── Health ────────────────────────────────────────────────────────────────
+async function ping() {
+  const dot = document.getElementById('api-dot');
+  const txt = document.getElementById('api-status-text');
+  try {
+    await req('GET', '/health');
+    dot.className = 'dot ok'; txt.textContent = 'API online'; txt.style.color = 'var(--ok)';
+  } catch {
+    dot.className = 'dot err'; txt.textContent = 'API offline'; txt.style.color = 'var(--danger)';
+  }
+}
+
+async function doHealthCheck() {
+  const pre = document.getElementById('health-out');
+  pre.style.display = 'block'; pre.textContent = 'Checking...'; pre.style.color = 'var(--muted)';
+  try {
+    const d = await req('GET', '/health');
+    pre.textContent = '✓ Connected\n' + JSON.stringify(d, null, 2); pre.style.color = 'var(--ok)';
+  } catch(e) {
+    pre.textContent = '✗ Cannot reach localhost:8000\nRun: uvicorn api.main:app --reload --port 8000';
+    pre.style.color = 'var(--danger)';
+  }
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────
+async function loadDashboard() {
+  try {
+    const [meds, low, adh] = await Promise.all([
+      req('GET', `/elders/${elderId}/medications`),
+      req('GET', `/elders/${elderId}/medications/low-stock`),
+      req('GET', `/elders/${elderId}/adherence?limit=30`)
+    ]);
+    document.getElementById('s-meds').textContent = meds.length;
+    document.getElementById('s-low').textContent = low.count;
+    document.getElementById('s-doses').textContent = meds.length;
+    const taken = adh.filter(a=>a.status==='taken').length;
+    const pct = adh.length ? Math.round(taken/adh.length*100) : 0;
+    document.getElementById('s-adh').textContent = pct + '%';
+
+    // Low stock banners
+    document.getElementById('low-alerts').innerHTML = low.low_stock_medications.map(m=>`
+      <div class="alert-banner">
+        <span class="icon">⚠️</span>
+        <div><div class="alert-title">${m.name} — Low Stock</div>
+        <div class="alert-desc">${m.pills_remaining} pills left (refill threshold: ${m.refill_threshold}). Please arrange a refill.</div></div>
+      </div>`).join('');
+
+    // Med rows
+    const el = document.getElementById('dash-meds');
+    if (!meds.length) { el.innerHTML='<div class="empty"><div class="icon">💊</div><p>No medications yet.<br>Go to Medications → Add Medication.</p></div>'; return; }
+    el.innerHTML = meds.map(m=>`
+      <div class="sched-row">
+        <div class="time-chip">${m.dosage}</div>
+        <div class="sched-info">
+          <div class="sched-name">${m.name}</div>
+          <div class="sched-dose">${m.pills_remaining} pills remaining${m.needs_refill?' · ⚠ Needs refill':''}</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="takeDose(${m.id},'${esc(m.name)}')">✓ Taken</button>
+      </div>`).join('');
+  } catch(e) {
+    document.getElementById('dash-meds').innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>Cannot load data.<br>Make sure FastAPI is running on port 8000.<br><small style="color:var(--danger)">${e.message}</small></p></div>`;
+  }
+}
+
+// ── Medications ───────────────────────────────────────────────────────────
+async function loadMeds() {
+  const el = document.getElementById('med-list');
+  try {
+    const meds = await req('GET', `/elders/${elderId}/medications`);
+    if (!meds.length) { el.innerHTML='<div class="empty"><div class="icon">💊</div><p>No medications yet. Click "Add Medication".</p></div>'; return; }
+    el.innerHTML = meds.map(m=>{
+      const st = m.pills_remaining===0?'critical':m.needs_refill?'low':'ok';
+      const max = Math.max(m.pills_remaining, m.refill_threshold*4, 30);
+      const pct = Math.round(m.pills_remaining/max*100);
+      const bc = st==='ok'?'badge-ok':st==='low'?'badge-low':'badge-critical';
+      const bt = st==='ok'?'✓ In stock':st==='low'?'⚠ Low stock':'✗ Critical';
+      return `<div class="med-card ${st}">
+        <div class="med-row">
+          <div><div class="med-name">${m.name}</div><div class="med-sub">${m.dosage}${m.notes?' · '+m.notes:''}</div></div>
+          <span class="badge ${bc}">${bt}</span>
+        </div>
+        <div class="pill-meta"><span>${m.pills_remaining} pills remaining</span><span>Alert at ≤${m.refill_threshold}</span></div>
+        <div class="pill-bar"><div class="pill-fill fill-${st}" style="width:${pct}%"></div></div>
+        <div class="med-actions">
+          <button class="btn btn-primary btn-sm" onclick="takeDose(${m.id},'${esc(m.name)}')">✓ Mark Taken</button>
+          <button class="btn btn-outline btn-sm" onclick="openRefill(${m.id},'${esc(m.name)}')">⟳ Refill</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch(e) { el.innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`; }
+}
+
+async function takeDose(id, name) {
+  try {
+    const d = await req('PATCH', `/medications/${id}/taken`);
+    toast(`✓ ${name} marked as taken. ${d.pills_remaining} pills left.`, 'success');
+    if (d.needs_refill) setTimeout(()=>toast(`⚠ Low stock: ${name} — arrange a refill.`,'warn'),1600);
+    loadMeds(); loadDashboard();
+  } catch(e) { toast('Error: '+e.message,'error'); }
+}
+
+// ── Add Med ───────────────────────────────────────────────────────────────
+function openAddMed() {
+  ['mn','md','mo'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('mp').value=30;
+  document.getElementById('mt').value=7;
+  openModal('modal-addmed');
+}
+
+async function saveMed() {
+  const name=document.getElementById('mn').value.trim();
+  const dosage=document.getElementById('md').value.trim();
+  if (!name||!dosage){toast('Name and dosage required','error');return;}
+  setLoad('btn-addmed',true);
+  try {
+    await req('POST',`/elders/${elderId}/medications`,{
+      name, dosage,
+      pills_remaining: parseInt(document.getElementById('mp').value)||30,
+      refill_threshold: parseInt(document.getElementById('mt').value)||7,
+      notes: document.getElementById('mo').value.trim()||null
+    });
+    toast('Medication added!','success');
+    closeModal('modal-addmed'); loadMeds(); loadDashboard();
+  } catch(e){toast('Error: '+e.message,'error');}
+  setLoad('btn-addmed',false);
+}
+
+// ── Refill ────────────────────────────────────────────────────────────────
+function openRefill(id,name){
+  refillId=id;
+  document.getElementById('rname').textContent='Medication: '+name;
+  document.getElementById('rq').value=30;
+  openModal('modal-refill');
+}
+
+async function saveRefill(){
+  const qty=parseInt(document.getElementById('rq').value);
+  if(!qty||qty<1){toast('Enter valid quantity','error');return;}
+  setLoad('btn-refill',true);
+  try {
+    const d=await req('PATCH',`/medications/${refillId}/refill?quantity=${qty}`);
+    toast(`Refill recorded. ${d.pills_remaining} pills now in stock.`,'success');
+    closeModal('modal-refill'); loadMeds(); loadDashboard();
+  } catch(e){toast('Error: '+e.message,'error');}
+  setLoad('btn-refill',false);
+}
+
+// ── Schedule ──────────────────────────────────────────────────────────────
+async function loadSched(){
+  const el=document.getElementById('sched-list');
+  try {
+    const meds=await req('GET',`/elders/${elderId}/medications`);
+    if(!meds.length){el.innerHTML='<div class="empty"><div class="icon">🕐</div><p>No medications to schedule yet.</p></div>';return;}
+    const now=new Date();
+    el.innerHTML=`<div style="font-size:12px;color:var(--muted);margin-bottom:14px">${now.toLocaleDateString('en-IN',{weekday:'long',day:'numeric',month:'long'})} · ${now.toLocaleTimeString('en-IN',{hour:'2-digit',minute:'2-digit'})}</div>`+
+    meds.map(m=>`
+      <div class="sched-row">
+        <div class="time-chip">${m.dosage}</div>
+        <div class="sched-info"><div class="sched-name">${m.name}</div><div class="sched-dose">${m.pills_remaining} pills remaining</div></div>
+        <button class="btn btn-primary btn-sm" onclick="takeDose(${m.id},'${esc(m.name)}')">✓ Taken</button>
+      </div>`).join('')+
+    `<p style="font-size:12px;color:var(--muted);margin-top:16px">Add time-based schedules via <a href="http://localhost:8000/docs" target="_blank" style="color:var(--teal)">localhost:8000/docs</a> → POST /elders/{id}/schedules</p>`;
+  } catch(e){el.innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+// ── Adherence ─────────────────────────────────────────────────────────────
+async function loadAdh(){
+  const el=document.getElementById('adh-table');
+  try {
+    const logs=await req('GET',`/elders/${elderId}/adherence?limit=30`);
+    if(!logs.length){el.innerHTML='<div class="empty"><div class="icon">📊</div><p>No adherence data yet.<br>Mark some doses as taken first.</p></div>';return;}
+    const taken=logs.filter(l=>l.status==='taken').length;
+    const pct=Math.round(taken/logs.length*100);
+    el.innerHTML=`<div style="display:flex;gap:24px;margin-bottom:16px;padding-bottom:14px;border-bottom:1px solid var(--border)">
+      <div><div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--ok)">${pct}%</div><div style="font-size:11px;color:var(--muted)">Adherence rate</div></div>
+      <div><div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700">${taken}/${logs.length}</div><div style="font-size:11px;color:var(--muted)">Doses taken</div></div>
+    </div>
+    <table class="table"><thead><tr><th>Med ID</th><th>Scheduled</th><th>Taken At</th><th>Status</th></tr></thead><tbody>
+    ${logs.map(l=>`<tr><td>#${l.medication_id}</td><td>${fmt(l.scheduled_time)}</td><td>${l.taken_at?fmt(l.taken_at):'—'}</td><td><span class="status-pill s-${l.status}">${l.status}</span></td></tr>`).join('')}
+    </tbody></table>`;
+  } catch(e){el.innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`;}
+}
+
+// ── Create Elder ──────────────────────────────────────────────────────────
+async function createElder(){
+  const name=document.getElementById('sn').value.trim();
+  if(!name){toast('Name is required','error');return;}
+  try {
+    const d=await req('POST','/elders',{name,phone:document.getElementById('sp').value.trim()||null,email:document.getElementById('se').value.trim()||null,timezone:document.getElementById('stz').value});
+    toast(`Elder "${d.name}" created (ID: ${d.id})!`,'success');
+    const sel=document.getElementById('elder-select');
+    const opt=document.createElement('option');
+    opt.value=d.id; opt.textContent=`${d.name} (#${d.id})`;
+    sel.appendChild(opt); sel.value=d.id; elderId=d.id; loadDashboard();
+  } catch(e){toast('Error: '+e.message,'error');}
+}
+
+// ── Helpers ───────────────────────────────────────────────────────────────
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+function esc(s){return s.replace(/'/g,"\\'")}
+function fmt(iso){return new Date(iso).toLocaleString('en-IN',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}
+
+function toast(msg,type='success'){
+  const t=document.getElementById('toast');
+  t.textContent=msg; t.className='toast show '+type;
+  clearTimeout(t._t); t._t=setTimeout(()=>t.classList.remove('show'),3200);
+}
+
+function setLoad(id,on){
+  const b=document.getElementById(id);
+  if(on){b._h=b.innerHTML;b.innerHTML='<span class="spin"></span> Saving...';b.disabled=true;}
+  else{b.innerHTML=b._h;b.disabled=false;}
+}
+
+document.querySelectorAll('.modal-overlay').forEach(o=>o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open')}));
+
+// ── Boot ──────────────────────────────────────────────────────────────────
+ping();
+loadDashboard();
+setInterval(ping, 30000);
+</script>
+</body>
+</html>

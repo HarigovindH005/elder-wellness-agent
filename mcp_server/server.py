@@ -25,7 +25,7 @@ API_BASE = os.getenv("API_BASE_URL", "http://localhost:8000")
 # Initialize FastMCP server — gives agents a clean tool interface
 mcp = FastMCP(
     name="MediGuard",
-    description="Tools for elder medication reminders and inventory tracking",
+    instructions="Tools for elder medication reminders and inventory tracking",
 )
 
 

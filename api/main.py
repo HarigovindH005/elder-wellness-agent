@@ -240,3 +240,10 @@ async def get_low_stock_medications(elder_id: int, db: AsyncSession = Depends(ge
         if m.pills_remaining <= m.refill_threshold
     ]
     return {"low_stock_medications": low_stock, "count": len(low_stock)}
+@app.get("/")
+async def root():
+    return {
+        "status": "ok",
+        "service": "MediGuard",
+        "docs": "/docs"
+    }

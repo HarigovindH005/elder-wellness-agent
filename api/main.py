@@ -247,3 +247,8 @@ async def root():
         "service": "MediGuard",
         "docs": "/docs"
     }
+from fastapi.responses import FileResponse
+
+@app.get("/")
+async def home():
+    return FileResponse("static/index.html")

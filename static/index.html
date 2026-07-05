@@ -220,7 +220,7 @@ body{font-family:'Inter',sans-serif;background:#0a1628;color:#e8f4f0;min-height:
         </div>
         <div class="card" style="max-width:500px">
           <div class="card-title">API Health Check</div>
-          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Verify your FastAPI backend is running on port 8000.</p>
+          <p style="font-size:13px;color:var(--muted);margin-bottom:12px">Verify your FastAPI backend is running on the correct port.</p>
           <button class="btn btn-outline btn-sm" onclick="doHealthCheck()">Run Check</button>
           <pre id="health-out" style="display:none;margin-top:12px;font-size:12px;color:var(--muted);white-space:pre-wrap;background:var(--card2);padding:10px;border-radius:8px"></pre>
         </div>
@@ -273,7 +273,7 @@ body{font-family:'Inter',sans-serif;background:#0a1628;color:#e8f4f0;min-height:
 <div class="toast" id="toast"></div>
 
 <script>
-const API = 'http://localhost:8080';
+const API = '';
 let elderId = 1;
 let refillId = null;
 
@@ -319,7 +319,7 @@ async function doHealthCheck() {
     const d = await req('GET', '/health');
     pre.textContent = '✓ Connected\n' + JSON.stringify(d, null, 2); pre.style.color = 'var(--ok)';
   } catch(e) {
-    pre.textContent = '✗ Cannot reach localhost:8000\nRun: uvicorn api.main:app --reload --port 8000';
+    pre.textContent = '✗ Cannot reach localhost\nRun: uvicorn api.main:app --reload --port &PORT';
     pre.style.color = 'var(--danger)';
   }
 }
@@ -360,7 +360,7 @@ async function loadDashboard() {
         <button class="btn btn-primary btn-sm" onclick="takeDose(${m.id},'${esc(m.name)}')">✓ Taken</button>
       </div>`).join('');
   } catch(e) {
-    document.getElementById('dash-meds').innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>Cannot load data.<br>Make sure FastAPI is running on port 8000.<br><small style="color:var(--danger)">${e.message}</small></p></div>`;
+    document.getElementById('dash-meds').innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>Cannot load data.<br>Make sure FastAPI is running on the correct port.<br><small style="color:var(--danger)">${e.message}</small></p></div>`;
   }
 }
 
@@ -461,7 +461,7 @@ async function loadSched(){
         <div class="sched-info"><div class="sched-name">${m.name}</div><div class="sched-dose">${m.pills_remaining} pills remaining</div></div>
         <button class="btn btn-primary btn-sm" onclick="takeDose(${m.id},'${esc(m.name)}')">✓ Taken</button>
       </div>`).join('')+
-    `<p style="font-size:12px;color:var(--muted);margin-top:16px">Add time-based schedules via <a href="http://localhost:8000/docs" target="_blank" style="color:var(--teal)">localhost:8000/docs</a> → POST /elders/{id}/schedules</p>`;
+    `<p style="font-size:12px;color:var(--muted);margin-top:16px">Add time-based schedules via <a href="" target="_blank" style="color:var(--teal)"></a> → POST /elders/{id}/schedules</p>`;
   } catch(e){el.innerHTML=`<div class="empty"><div class="icon">⚠️</div><p>${e.message}</p></div>`;}
 }
 
